@@ -71,6 +71,8 @@
              font-size:12.5px;font-weight:500;color:var(--ink);padding:3px 0 0;outline:none;}
   .cell .fld:focus{color:var(--signal);}
   .cell .fld::placeholder{color:var(--lsteel);font-weight:400;}
+  .cell input[type=date]{-webkit-appearance:none;appearance:none;min-height:20px;}
+  .cell input[type=date]::-webkit-calendar-picker-indicator{cursor:pointer;opacity:0.55;margin:0;}
   /* Validación */
   .fld.invalid{box-shadow:inset 0 -1.5px 0 var(--signal);color:var(--signal);}
   .verr{color:var(--signal);font-family:'IBM Plex Mono',monospace;letter-spacing:0.06em;}
@@ -192,7 +194,6 @@
   <div class="tb-group">
     <span class="eyebrow" style="color:var(--lsteel)">Valor UF</span>
     <input id="ufInput" class="tb-input" type="text" inputmode="decimal" value="39000">
-    <button class="tb-btn ghost" id="ufFetch"><i data-lucide="refresh-cw" class="ic"></i>Actualizar</button>
     <span id="ufState">·</span>
   </div>
   <div class="spacer"></div>
@@ -227,7 +228,7 @@
     <div class="cell"><label class="eyebrow">Cliente</label><input class="fld" placeholder="Nombre / Razón social"></div>
     <div class="cell"><label class="eyebrow">Activo / Instalación</label><input class="fld" placeholder="Identificación del activo"></div>
     <div class="cell"><label class="eyebrow">RUT <span class="verr" hidden>· inválido</span></label><input class="fld" data-validate="rut" placeholder="00.000.000-0"></div>
-    <div class="cell"><label class="eyebrow">Fecha</label><input class="fld" id="fechaFld" placeholder="dd/mm/aaaa"></div>
+    <div class="cell"><label class="eyebrow">Fecha <span class="verr" id="fechaErr" hidden>· inválida</span></label><input class="fld" id="fechaFld" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa"></div>
     <div class="cell" style="grid-column:span 2"><label class="eyebrow">Dirección</label><input class="fld" placeholder="Calle, número, comuna, ciudad"></div>
     <div class="cell"><label class="eyebrow">Correo <span class="verr" hidden>· inválido</span></label><input class="fld" data-validate="email" placeholder="correo@cliente.cl"></div>
     <div class="cell"><label class="eyebrow">Teléfono</label><input class="fld" placeholder="+56 9 0000 0000"></div>
@@ -244,7 +245,7 @@
         <h2>¿Por qué Alto Test?</h2>
         <span class="cat"></span>
       </div>
-      <p class="why-lead">No emitimos un certificado y desaparecemos: <b>gestionamos cada activo durante toda su vida útil</b>, entregando información técnica confiable, trazable y accionable en cada etapa.</p>
+      <p class="why-lead">No emitimos un certificado y desaparecemos: <b>nos convertimos en un socio técnico</b>, entregando información técnica confiable, trazable y accionable en cada etapa.</p>
       <div class="why-grid">
         <div class="why-item"><i data-lucide="search" class="ic"></i><h3>Diagnóstico</h3><p>Evaluamos la condición real del sistema.</p></div>
         <div class="why-item"><i data-lucide="pen-tool" class="ic"></i><h3>Ingeniería</h3><p>Diseño de la solución según normativa vigente.</p></div>
@@ -475,11 +476,37 @@ ufInput.addEventListener('input', () => {
   if (v > 0){ state.uf = v; renderRows(); ufState.textContent = "· manual"; ufState.style.color = "var(--lsteel)"; }
 });
 
-// "dd/mm/aaaa" -> "yyyy-mm-dd" (o null si no es válida)
+// Normaliza a "yyyy-mm-dd" (acepta el valor nativo del input date o dd/mm/aaaa)
 function fechaToISO(str){
-  const m = String(str||"").trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  const s = String(str||"").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;              // iso directo
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);     // dd/mm/aaaa
   if(!m) return null;
   return m[3] + '-' + m[2].padStart(2,'0') + '-' + m[1].padStart(2,'0');
+}
+// Valida fecha real dd/mm/aaaa (rechaza 32/13, 31/02, etc.)
+function fechaValida(str){
+  const m = String(str||"").trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if(!m) return false;
+  const d = +m[1], mo = +m[2], y = +m[3];
+  if (mo < 1 || mo > 12 || d < 1 || y < 1900 || y > 2100) return false;
+  const dt = new Date(y, mo-1, d);
+  return dt.getFullYear() === y && dt.getMonth() === mo-1 && dt.getDate() === d;
+}
+// Autoformato: mete las barras a medida que se escribe -> "dd/mm/aaaa"
+function formateaFechaInput(v){
+  const dig = String(v).replace(/\D/g,'').slice(0,8);
+  let out = dig.slice(0,2);
+  if (dig.length >= 3) out += '/' + dig.slice(2,4);
+  if (dig.length >= 5) out += '/' + dig.slice(4,8);
+  return out;
+}
+// fetch con tiempo de espera (aborta si tarda demasiado)
+async function fetchTimeout(url, ms){
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), ms);
+  try { return await fetch(url, { cache:"no-store", signal: ctrl.signal }); }
+  finally { clearTimeout(t); }
 }
 // Parseo del valor UF de indicadoreconomico.cl: "40.844.79" -> 40844.79
 function parseUFValor(raw){
@@ -496,37 +523,84 @@ function parseUFValor(raw){
 const UF_DATE_URL  = "https://indicadoreconomico.cl/api/uf";        // ?fecha=YYYY-MM-DD (histórico)
 const UF_TODAY_URL = "https://api.boostr.cl/economy/indicators.json"; // respaldo (solo hoy)
 
+// Caché de UF por fecha (memoria + localStorage) para evitar reconsultar fechas ya vistas
+const UF_CACHE_KEY = "altotest_uf_cache";
+let ufCache = {};
+try { ufCache = JSON.parse(localStorage.getItem(UF_CACHE_KEY) || "{}") || {}; } catch(e){ ufCache = {}; }
+function cacheGet(iso){ const v = ufCache[iso]; return v > 0 ? v : 0; }
+function cacheSet(iso, val){
+  if(!(val > 0)) return;
+  ufCache[iso] = val;
+  try { localStorage.setItem(UF_CACHE_KEY, JSON.stringify(ufCache)); } catch(e){ /* almacenamiento no disponible */ }
+}
+
+let ufSeq = 0; // secuenciador: solo la última consulta puede actualizar la UI
 async function fetchUF(){
-  const iso = fechaToISO(fechaFld.value) || new Date().toISOString().slice(0,10);
+  const myId = ++ufSeq;
+  const vigente = () => myId === ufSeq; // ¿sigo siendo la consulta más reciente?
+  const hoyISO = new Date().toISOString().slice(0,10);
+  const iso = fechaToISO(fechaFld.value) || hoyISO;
+  // 0) Caché: si ya vimos esta fecha, la reutilizamos sin consultar
+  const cached = cacheGet(iso);
+  if (cached > 0){
+    applyUF(cached, "UF " + nfUF.format(cached) + " (" + iso + " · guardado)", true);
+    return;
+  }
   ufState.textContent = "· consultando " + iso + "…"; ufState.style.color = "var(--lsteel)";
-  // 1) Fuente por fecha
+  // 1) Fuente por fecha (histórica)
   try{
-    const res = await fetch(UF_DATE_URL + "?fecha=" + iso, { cache:"no-store" });
+    const res = await fetchTimeout(UF_DATE_URL + "?fecha=" + iso, 8000);
     if(!res.ok) throw new Error("HTTP " + res.status);
     const data = await res.json();               // { fecha, valor }
     const val = parseUFValor(data && data.valor);
     if(!(val > 0)) throw new Error("Sin dato para la fecha");
+    cacheSet(iso, val);                           // se guarda para próximas veces
+    if(!vigente()) return;                         // llegó tarde: otra fecha ya la reemplazó
     applyUF(val, "UF " + nfUF.format(val) + " (" + (data.fecha || iso) + ")", true);
     return;
   }catch(err){ console.warn("UF por fecha falló:", err); }
-  // 2) Respaldo boostr (valor de hoy)
-  try{
-    const res = await fetch(UF_TODAY_URL, { cache:"no-store" });
-    if(!res.ok) throw new Error("HTTP " + res.status);
-    const data = await res.json();
-    const rec = data && data.data && data.data.uf;
-    const val = rec ? parseNum(rec.value) : 0;
-    if(!(val > 0)) throw new Error("Sin dato de UF");
-    applyUF(val, "UF " + nfUF.format(val) + " (hoy)", true);
-    return;
-  }catch(err){ console.warn("UF respaldo falló:", err); }
-  // 3) Manual
-  ufState.textContent = "· sin conexión — usa valor manual";
+  // 2) Respaldo boostr — SOLO si la fecha pedida es hoy (boostr solo entrega el valor del día)
+  if (iso === hoyISO){
+    try{
+      const res = await fetchTimeout(UF_TODAY_URL, 8000);
+      if(!res.ok) throw new Error("HTTP " + res.status);
+      const data = await res.json();
+      const rec = data && data.data && data.data.uf;
+      const val = rec ? parseNum(rec.value) : 0;
+      if(!(val > 0)) throw new Error("Sin dato de UF");
+      cacheSet(iso, val);
+      if(!vigente()) return;
+      applyUF(val, "UF " + nfUF.format(val) + " (hoy)", true);
+      return;
+    }catch(err){ console.warn("UF respaldo falló:", err); }
+  }
+  // 3) Sin dato para esa fecha → valor manual (no inventamos el de hoy)
+  if(!vigente()) return;
+  ufState.textContent = "· sin dato para " + iso + " — usa valor manual";
   ufState.style.color = "var(--signal)";
 }
-document.getElementById('ufFetch').addEventListener('click', fetchUF);
-// Al cambiar la fecha de la propuesta, se reconsulta la UF de esa fecha
-fechaFld.addEventListener('change', fetchUF);
+// Fecha: autoformato + validación. La consulta se dispara SOLO con la fecha completa y válida.
+const fechaErr = document.getElementById('fechaErr');
+fechaFld.addEventListener('input', () => {
+  const pos = fechaFld.value.length;
+  fechaFld.value = formateaFechaInput(fechaFld.value);
+  if (fechaFld.value.length === 10){
+    if (fechaValida(fechaFld.value)){
+      fechaFld.classList.remove('invalid'); fechaErr.hidden = true;
+      fetchUF();                        // fecha completa y válida → consultar
+    } else {
+      fechaFld.classList.add('invalid'); fechaErr.hidden = false;
+    }
+  } else {
+    fechaFld.classList.remove('invalid'); fechaErr.hidden = true; // aún escribiendo
+  }
+});
+fechaFld.addEventListener('blur', () => {
+  const v = fechaFld.value.trim();
+  const bad = v !== '' && !fechaValida(v);
+  fechaFld.classList.toggle('invalid', bad);
+  fechaErr.hidden = !bad;
+});
 
 /* ---------------- Agregar fila ---------------- */
 document.getElementById('addRow').addEventListener('click', () => {
