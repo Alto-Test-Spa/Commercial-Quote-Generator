@@ -44,7 +44,7 @@
   #ufState{font-family:'IBM Plex Mono',monospace;font-size:11px;}
 
   /* ---------- Hoja ---------- */
-  .sheet{width:8.5in;min-height:11in;margin:22px auto;background:var(--paper);position:relative;
+  .sheet{width:21.6cm;min-height:33cm;margin:22px auto;background:var(--paper);position:relative;
          display:flex;flex-direction:column;box-shadow:0 0 0 1px rgba(16,21,30,0.06),0 20px 44px -24px rgba(16,21,30,0.4);}
   .grid-fine{background-image:linear-gradient(to right,rgba(255,255,255,0.05) 1px,transparent 1px),
              linear-gradient(to bottom,rgba(255,255,255,0.05) 1px,transparent 1px);background-size:26px 26px;}
@@ -109,6 +109,8 @@
   .cellin{width:100%;border:0;background:transparent;font-family:inherit;font-size:12.5px;color:var(--ink);
           outline:none;padding:0;}
   .cellin.num{text-align:right;font-variant-numeric:tabular-nums;}
+  textarea.concepto{display:block;resize:none;overflow:hidden;line-height:1.4;min-height:18px;
+                    white-space:pre-wrap;word-break:break-word;}
   .priced{display:flex;align-items:baseline;gap:5px;}
   .priced .ctag{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--steel);flex:0 0 auto;}
   .priced .cellin{flex:1;}
@@ -168,11 +170,20 @@
   .cat-svg{display:block;margin-top:5px;}
 
   /* ---------- Impresión ---------- */
-  @page{size:Letter;margin:0;}
+  @page{size:21.6cm 33cm;margin:0;} /* Oficio (Chile) */
   @media print{
     html,body{background:#fff;}
     .no-print{display:none !important;}
-    .sheet{width:8.5in;min-height:0;height:11in;margin:0;box-shadow:none;overflow:hidden;}
+    /* El contenido fluye en varias hojas si es necesario (no se recorta).
+       min-height:100vh = alto real de la página impresa (cualquier papel) → el pie queda al ras. */
+    .sheet{display:flex;flex-direction:column;width:21.6cm;min-height:100vh;height:auto;
+           margin:0;box-shadow:none;overflow:visible;}
+    .body{flex:1 0 auto;}
+    /* Evita cortar elementos por la mitad entre páginas */
+    table.items tr{break-inside:avoid;}
+    table.items thead{display:table-header-group;} /* repite el encabezado de la tabla */
+    .why-item,.totals,.trow,.foot-grid,.sec-title,.why-grid{break-inside:avoid;}
+    .foot{break-inside:avoid;}
     .cellin::placeholder,.cell .fld::placeholder,.foot .emisor .fld::placeholder{color:transparent;}
     .notes textarea{border-color:transparent;}
     *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
@@ -369,7 +380,7 @@ function renderRows(){
     const tp = pair(rowTotal, state.cur);
     const ctag = state.cur === 'UF' ? 'UF' : '$';
     tr.innerHTML =
-      '<td><input class="cellin concepto" data-i="'+i+'" data-k="concepto" value="'+escAttr(r.concepto)+'" placeholder="Descripción del concepto"></td>'+
+      '<td><textarea class="cellin concepto" rows="1" data-i="'+i+'" data-k="concepto" placeholder="Descripción del concepto">'+escAttr(r.concepto)+'</textarea></td>'+
       '<td class="num"><input class="cellin num" data-i="'+i+'" data-k="cant" value="'+fmtField(r.cant)+'" placeholder="0"></td>'+
       '<td class="num"><span class="priced"><span class="ctag">'+ctag+'</span><input class="cellin num" data-i="'+i+'" data-k="precio" value="'+fmtPrecio(r.precio)+'" placeholder="0"></span></td>'+
       '<td class="num"><span class="rowtot">'+tp.main+'<span class="alt">'+tp.alt+'</span></span></td>'+
@@ -377,6 +388,7 @@ function renderRows(){
     tbody.appendChild(tr);
   });
   bindRowEvents();
+  tbody.querySelectorAll('textarea.concepto').forEach(autoGrow); // ajusta alto inicial
   renderTotals();
 }
 function fmtField(n){ // números con coma decimal a la chilena, sin separador de miles
@@ -396,6 +408,7 @@ function bindRowEvents(){
       const i = +e.target.dataset.i, k = e.target.dataset.k;
       if (k === 'concepto'){
         state.rows[i].concepto = e.target.value;
+        autoGrow(e.target); // crece hacia abajo con el texto
       } else {
         let v = parseNum(e.target.value);
         if (k === 'cant' && v < 0){ v = 0; e.target.value = '0'; } // la cantidad no puede ser negativa
@@ -624,6 +637,7 @@ document.getElementById('addRow').addEventListener('click', () => {
 const notes = document.getElementById('notes');
 function autoGrow(el){ el.style.height = 'auto'; el.style.height = el.scrollHeight + 'px'; }
 notes.addEventListener('input', () => autoGrow(notes));
+
 
 /* ---------------- Validación de RUT y correo ---------------- */
 // RUT chileno con dígito verificador (módulo 11)
