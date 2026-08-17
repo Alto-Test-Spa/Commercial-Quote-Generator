@@ -157,6 +157,11 @@
   .trow.total .lab{color:rgba(255,255,255,0.85);}
   .trow.total .val .main{font-size:19px;}
   .trow.total .val .alt{color:rgba(255,255,255,0.8);}
+  .pctInput{width:30px;border:0;border-bottom:1px solid var(--line2);background:transparent;
+            font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--ink);text-align:right;
+            padding:0 1px;outline:none;}
+  .pctInput:focus{border-color:var(--signal);color:var(--signal);}
+  .pctInput::placeholder{color:var(--lsteel);}
 
   /* ---------- Pie de página ---------- */
   .foot{background:var(--ink);color:var(--lsteel);padding:16px 42px;display:flex;justify-content:space-between;
@@ -323,6 +328,10 @@ Validez de la propuesta: 10 días.
         <div class="trow">
           <span class="lab">Subtotal neto</span>
           <span class="val"><span class="main" id="subMain">—</span><span class="alt" id="subAlt">—</span></span>
+        </div>
+        <div class="trow">
+          <span class="lab">Descuento <input id="descuentoPct" class="pctInput" data-persist="descuentoPct" value="0" inputmode="numeric" pattern="[0-9]*" maxlength="3" placeholder="0">%</span>
+          <span class="val"><span class="main" id="descMain">—</span><span class="alt" id="descAlt">—</span></span>
         </div>
         <div class="trow">
           <span class="lab">IVA 19%</span>
@@ -653,16 +662,28 @@ function bindRowEvents(){
 }
 
 /* ---------------- Totales ---------------- */
+// El descuento (%) se aplica sobre el neto, antes del IVA: neto -> descuento -> IVA -> total.
 function renderTotals(){
   const sub = state.rows.reduce((a,r)=> a + parseNum(r.cant)*parseNum(r.precio), 0);
-  const iva = sub * 0.19;
-  const tot = sub + iva;
-  const sp = pair(sub, state.cur), ip = pair(iva, state.cur), tpv = pair(tot, state.cur);
+  const descPct = Math.min(100, Math.max(0, parseNum(document.getElementById('descuentoPct').value)));
+  const desc = sub * (descPct / 100);
+  const neto = sub - desc;
+  const iva = neto * 0.19;
+  const tot = neto + iva;
+  const sp = pair(sub, state.cur), dp = pair(desc, state.cur), ip = pair(iva, state.cur), tpv = pair(tot, state.cur);
   set('subMain', sp.main); set('subAlt', sp.alt);
+  set('descMain', (desc > 0 ? '-' : '') + dp.main); set('descAlt', (desc > 0 ? '-' : '') + dp.alt);
   set('ivaMain', ip.main); set('ivaAlt', ip.alt);
   set('totMain', tpv.main); set('totAlt', tpv.alt);
 }
 function set(id, v){ document.getElementById(id).textContent = v; }
+document.getElementById('descuentoPct').addEventListener('input', e => {
+  // solo dígitos enteros (sin coma ni punto): 0-100, sin ceros a la izquierda
+  let digits = e.target.value.replace(/\D/g,'').replace(/^0+(?=\d)/,'');
+  if (digits !== '' && +digits > 100) digits = '100';
+  e.target.value = digits;
+  renderTotals();
+});
 
 /* ---------------- Moneda ---------------- */
 document.getElementById('curSeg').addEventListener('click', e => {

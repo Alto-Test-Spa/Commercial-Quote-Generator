@@ -226,3 +226,26 @@ falta un 6° paso o cambiar el ícono de alguno, es un cambio más grande
   `localStorage` distintas — no forzarlo sin que él lo pida.
 - El párrafo de "por qué" perdió el `<b>` que resaltaba una frase (ver
   Arquitectura, "Texto editable fuera de la ficha") al pasar a texto plano.
+
+## Sesión 17/08/2026 — descuento % antes del IVA
+
+Camilo pidió poder aplicar un % de descuento editable sobre el neto, antes
+del IVA. Se agregó una fila **Descuento** en `.totals`, entre "Subtotal
+neto" e "IVA 19%": un `<input id="descuentoPct" data-persist="descuentoPct">`
+inline en el label (no un ítem más de la tabla) — persiste solo, sin tocar
+`Store.leer`/`aplicar`, vía el mecanismo genérico de `[data-persist]`
+(invariante 4).
+
+- Orden de cálculo en `renderTotals()`: `neto → descuento (%) → IVA 19% →
+  total`. El IVA se calcula sobre el neto *después* de descontar, no antes
+  — es el pedido explícito ("antes del IVA, sobre el neto").
+- El input se clampa a `[0,100]` en el propio listener de `input` (mismo
+  patrón que `cant` no-negativo en las filas), y dispara `renderTotals()`
+  directo — aparte del `Store.guardar()` genérico que ya le conecta
+  `wirePersistCampos()` por tener `data-persist`.
+- Es un solo % global sobre el total de la cotización, no por ítem —
+  Camilo no pidió descuento por línea, no se implementó.
+- Al ser un porcentaje (no un monto en UF/CLP), no necesita pasar por el
+  factor de conversión de moneda (invariante 2) al cambiar UF↔CLP — se
+  reaplica solo porque `renderTotals()` recalcula el monto en la moneda
+  activa cada vez.
