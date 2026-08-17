@@ -41,7 +41,7 @@
   .tb-btn:hover{background:var(--signal);color:#fff;}
   .tb-btn.ghost{background:transparent;color:var(--lsteel);border:1px solid rgba(244,245,242,0.3);}
   .tb-btn.ghost:hover{color:#fff;border-color:var(--signal);}
-  #ufState{font-family:'IBM Plex Mono',monospace;font-size:11px;}
+  #ufState,#saveState{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--lsteel);}
 
   /* ---------- Hoja ---------- */
   .sheet{width:21.6cm;min-height:33cm;margin:22px auto;background:var(--paper);position:relative;
@@ -68,7 +68,8 @@
   .cell:nth-child(4n){border-right:0;}
   .cell label{display:block;}
   .cell .fld{width:100%;border:0;background:transparent;font-family:'IBM Plex Sans',sans-serif;
-             font-size:12.5px;font-weight:500;color:var(--ink);padding:3px 0 0;outline:none;}
+             font-size:12.5px;font-weight:500;color:var(--ink);padding:3px 0 0;outline:none;
+             resize:none;overflow:hidden;line-height:1.35;display:block;}
   .cell .fld:focus{color:var(--signal);}
   .cell .fld::placeholder{color:var(--lsteel);font-weight:400;}
   .cell input[type=date]{-webkit-appearance:none;appearance:none;min-height:20px;}
@@ -89,9 +90,20 @@
   .why{margin-bottom:16px;}
   .why-lead{font-size:12.5px;line-height:1.55;color:var(--ink2);max-width:82%;margin:0 0 13px;}
   .why-lead b{color:var(--ink);font-weight:600;}
-  .why-grid{display:grid;grid-template-columns:repeat(5,1fr);border:1px solid var(--line);}
-  .why-item{padding:13px 13px 14px;border-right:1px solid var(--line);}
-  .why-item:last-child{border-right:0;}
+  .why-grid{display:grid;grid-template-columns:repeat(var(--n,5),1fr);border:1px solid var(--line);}
+  .why-item{position:relative;padding:13px 13px 14px;border-right:1px solid var(--line);}
+  .why-item.sin-borde{border-right:0;}
+  .why-item[hidden]{display:none !important;}
+  .why-del{position:absolute;top:6px;right:6px;width:16px;height:16px;border:1px solid var(--line);
+           background:var(--paper);color:var(--steel);cursor:pointer;font-size:12px;line-height:1;
+           border-radius:2px;padding:0;}
+  .why-del:hover{border-color:var(--signal);color:var(--signal);}
+  .why-restaurar{margin-top:8px;display:flex;flex-wrap:wrap;gap:6px;}
+  .why-restaurar button{display:inline-flex;align-items:center;gap:5px;font-family:'IBM Plex Mono',monospace;
+           font-size:10px;letter-spacing:0.05em;text-transform:uppercase;background:transparent;
+           border:1px dashed var(--line2);color:var(--steel);padding:5px 10px;cursor:pointer;}
+  .why-restaurar button:hover{border-color:var(--signal);color:var(--signal);}
+  .why-restaurar .ic{width:12px;height:12px;stroke-width:2;}
   .why-item .ic{width:22px;height:22px;color:var(--signal);stroke-width:1.6;}
   .why-item h3{margin:9px 0 4px;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;
                letter-spacing:0.07em;text-transform:uppercase;}
@@ -169,6 +181,11 @@
   .foot .slogan .big{color:var(--paper);font-size:12px;letter-spacing:-0.02em;}
   .cat-svg{display:block;margin-top:5px;}
 
+  /* ---------- Texto editable (título, "por qué", eslogan) ---------- */
+  [contenteditable="true"]{outline:none;cursor:text;}
+  [contenteditable="true"]:hover{box-shadow:inset 0 -1.5px 0 var(--line2);}
+  [contenteditable="true"]:focus{box-shadow:inset 0 -1.5px 0 var(--signal);}
+
   /* ---------- Impresión ---------- */
   @page{size:21.6cm 33cm;margin:0;} /* Oficio (Chile) */
   @media print{
@@ -186,6 +203,7 @@
     .foot{break-inside:avoid;}
     .cellin::placeholder,.cell .fld::placeholder,.foot .emisor .fld::placeholder{color:transparent;}
     .notes textarea{border-color:transparent;}
+    [contenteditable="true"]{box-shadow:none !important;}
     *{-webkit-print-color-adjust:exact !important;print-color-adjust:exact !important;}
   }
 </style>
@@ -207,7 +225,12 @@
     <input id="ufInput" class="tb-input" type="text" inputmode="decimal" value="39000">
     <span id="ufState">·</span>
   </div>
+  <div class="tb-group">
+    <span id="saveState">·</span>
+  </div>
   <div class="spacer"></div>
+  <button class="tb-btn ghost" id="btnDeshacer" hidden title="Recupera la cotización anterior a 'Nueva'"><i data-lucide="rotate-ccw" class="ic"></i>Deshacer</button>
+  <button class="tb-btn ghost" id="btnNueva" title="Vuelve a la plantilla en blanco (lo actual queda respaldado)"><i data-lucide="file-plus" class="ic"></i>Nueva</button>
   <button class="tb-btn" onclick="window.print()"><i data-lucide="printer" class="ic"></i>Imprimir / PDF</button>
 </div>
 
@@ -225,24 +248,24 @@
       </div>
       <div class="code-box">
         <div>Cotización</div>
-        <div><b id="codeOut">COT-—</b></div>
+        <div><b id="codeOut" data-persist="codigo">COT-—</b></div>
       </div>
     </div>
     <div class="doc-title">
-      <h1>PROPUESTA ECONÓMICA</h1>
-      <p>Sistemas de protección contra caídas</p>
+      <h1 id="docTitle" contenteditable="true" data-persist="docTitle">PROPUESTA ECONÓMICA</h1>
+      <p id="docSubtitle" contenteditable="true" data-persist="docSubtitle">Sistemas de protección contra caídas</p>
     </div>
   </header>
 
   <!-- Datos del cliente -->
   <section class="client">
-    <div class="cell"><label class="eyebrow">Cliente</label><input class="fld" placeholder="Nombre / Razón social"></div>
-    <div class="cell"><label class="eyebrow">Activo / Instalación</label><input class="fld" placeholder="Identificación del activo"></div>
-    <div class="cell"><label class="eyebrow">RUT <span class="verr" hidden>· inválido</span></label><input class="fld" data-validate="rut" placeholder="00.000.000-0"></div>
-    <div class="cell"><label class="eyebrow">Fecha <span class="verr" id="fechaErr" hidden>· inválida</span></label><input class="fld" id="fechaFld" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa"></div>
-    <div class="cell" style="grid-column:span 2"><label class="eyebrow">Dirección</label><input class="fld" placeholder="Calle, número, comuna, ciudad"></div>
-    <div class="cell"><label class="eyebrow">Correo <span class="verr" hidden>· inválido</span></label><input class="fld" data-validate="email" placeholder="correo@cliente.cl"></div>
-    <div class="cell"><label class="eyebrow">Teléfono</label><input class="fld" placeholder="+56 9 0000 0000"></div>
+    <div class="cell"><label class="eyebrow">Cliente</label><textarea class="fld auto" rows="1" data-persist="cliente" placeholder="Nombre / Razón social"></textarea></div>
+    <div class="cell"><label class="eyebrow">Activo / Instalación</label><textarea class="fld auto" rows="1" data-persist="activo" placeholder="Identificación del activo"></textarea></div>
+    <div class="cell"><label class="eyebrow">RUT <span class="verr" hidden>· inválido</span></label><input class="fld" data-validate="rut" data-persist="rut" placeholder="00.000.000-0"></div>
+    <div class="cell"><label class="eyebrow">Fecha <span class="verr" id="fechaErr" hidden>· inválida</span></label><input class="fld" id="fechaFld" data-persist="fecha" inputmode="numeric" maxlength="10" placeholder="dd/mm/aaaa"></div>
+    <div class="cell" style="grid-column:span 2"><label class="eyebrow">Dirección</label><textarea class="fld auto" rows="1" data-persist="direccion" placeholder="Calle, número, comuna, ciudad"></textarea></div>
+    <div class="cell"><label class="eyebrow">Correo <span class="verr" hidden>· inválido</span></label><textarea class="fld auto" rows="1" data-validate="email" data-persist="correo" placeholder="correo@cliente.cl"></textarea></div>
+    <div class="cell"><label class="eyebrow">Teléfono</label><input class="fld" data-persist="telefono" placeholder="+56 9 0000 0000"></div>
   </section>
 
   <!-- Cuerpo -->
@@ -256,14 +279,15 @@
         <h2>¿Por qué Alto Test?</h2>
         <span class="cat"></span>
       </div>
-      <p class="why-lead">No emitimos un certificado y desaparecemos: <b>nos convertimos en un socio técnico</b>, entregando información técnica confiable, trazable y accionable en cada etapa.</p>
-      <div class="why-grid">
-        <div class="why-item"><i data-lucide="search" class="ic"></i><h3>Diagnóstico</h3><p>Evaluamos la condición real del sistema.</p></div>
-        <div class="why-item"><i data-lucide="pen-tool" class="ic"></i><h3>Ingeniería</h3><p>Diseño de la solución según normativa vigente.</p></div>
-        <div class="why-item"><i data-lucide="wrench" class="ic"></i><h3>Instalación</h3><p>Ejecución técnica especializada y certificada.</p></div>
-        <div class="why-item"><i data-lucide="shield-check" class="ic"></i><h3>Certificación</h3><p>Evidencia técnica documentada y trazable.</p></div>
-        <div class="why-item"><i data-lucide="activity" class="ic"></i><h3>Seguimiento</h3><p>Acompañamiento durante toda la vida útil.</p></div>
+      <p class="why-lead" id="whyLead" contenteditable="true" data-persist="whyLead">No emitimos un certificado y desaparecemos: nos convertimos en un socio técnico, entregando información técnica confiable, trazable y accionable en cada etapa.</p>
+      <div class="why-grid" id="whyGrid">
+        <div class="why-item" data-oculto-key="why1Oculto"><button class="why-del no-print" data-why-del title="Quitar este paso">&times;</button><i data-lucide="search" class="ic"></i><h3 contenteditable="true" data-persist="why1Titulo">Diagnóstico</h3><p contenteditable="true" data-persist="why1Desc">Evaluamos la condición real del sistema.</p></div>
+        <div class="why-item" data-oculto-key="why2Oculto"><button class="why-del no-print" data-why-del title="Quitar este paso">&times;</button><i data-lucide="pen-tool" class="ic"></i><h3 contenteditable="true" data-persist="why2Titulo">Ingeniería</h3><p contenteditable="true" data-persist="why2Desc">Diseño de la solución según normativa vigente.</p></div>
+        <div class="why-item" data-oculto-key="why3Oculto"><button class="why-del no-print" data-why-del title="Quitar este paso">&times;</button><i data-lucide="wrench" class="ic"></i><h3 contenteditable="true" data-persist="why3Titulo">Instalación</h3><p contenteditable="true" data-persist="why3Desc">Ejecución técnica especializada y certificada.</p></div>
+        <div class="why-item" data-oculto-key="why4Oculto"><button class="why-del no-print" data-why-del title="Quitar este paso">&times;</button><i data-lucide="shield-check" class="ic"></i><h3 contenteditable="true" data-persist="why4Titulo">Certificación</h3><p contenteditable="true" data-persist="why4Desc">Evidencia técnica documentada y trazable.</p></div>
+        <div class="why-item" data-oculto-key="why5Oculto"><button class="why-del no-print" data-why-del title="Quitar este paso">&times;</button><i data-lucide="activity" class="ic"></i><h3 contenteditable="true" data-persist="why5Titulo">Seguimiento</h3><p contenteditable="true" data-persist="why5Desc">Acompañamiento durante toda la vida útil.</p></div>
       </div>
+      <div class="why-restaurar no-print" id="whyRestaurar" hidden></div>
     </div>
 
     <div class="sec-title">
@@ -290,7 +314,7 @@
     <div class="foot-grid">
       <div class="notes">
         <label class="eyebrow">Condiciones y notas</label>
-        <textarea id="notes">Forma de pago: Transferencia 30 días contra entrega.
+        <textarea id="notes" data-persist="notas">Forma de pago: Transferencia 30 días contra entrega.
 Incluye retiro de sistema actual.
 Validez de la propuesta: 10 días.
 </textarea>
@@ -322,13 +346,13 @@ Validez de la propuesta: 10 días.
     </div>
     <div class="comercial">
       <div class="eyebrow">Contacto comercial</div>
-      <div><i data-lucide="user" class="ic"></i><input class="fld" value="Camilo Jara Acevedo"></div>
-      <div><i data-lucide="mail" class="ic"></i><input class="fld" data-validate="email" value="camilo.jara@altotest.cl"></div>
-      <div><i data-lucide="phone" class="ic"></i><input class="fld" value="+56 9 3075 4624"></div>
+      <div><i data-lucide="user" class="ic"></i><input class="fld" data-persist="comNombre" value="Camilo Jara Acevedo"></div>
+      <div><i data-lucide="mail" class="ic"></i><input class="fld" data-validate="email" data-persist="comCorreo" value="camilo.jara@altotest.cl"></div>
+      <div><i data-lucide="phone" class="ic"></i><input class="fld" data-persist="comTelefono" value="+56 9 3075 4624"></div>
     </div>
     <div class="slogan">
-      <div class="big">La altura, bajo control.</div>
-      <div>Diagnóstico · Diseño · Instalación · Certificación · Mantención</div>
+      <div class="big" contenteditable="true" data-persist="sloganBig">La altura, bajo control.</div>
+      <div contenteditable="true" data-persist="sloganDesc">Diagnóstico · Diseño · Instalación · Certificación · Mantención</div>
     </div>
   </footer>
 
@@ -368,6 +392,189 @@ function parseNum(str){
   else { s = s.replace(',', '.'); }
   const n = parseFloat(s);
   return isFinite(n) ? n : 0;
+}
+
+/* ---------------- Persistencia local ---------------- */
+// Autoguardado de todo lo editable (ficha, ítems, título, "por qué", pie) en
+// localStorage. "Nueva" respalda la cotización actual y vuelve a la plantilla
+// en blanco; "Deshacer" la recupera mientras no se haya escrito nada más.
+function clonar(o){ return JSON.parse(JSON.stringify(o)); }
+
+const CLAVE_GUARDADO = "altotest_propuesta_economica_v1";
+const CLAVE_RESPALDO = CLAVE_GUARDADO + "_anterior";
+
+const Store = {
+  defaults: null,    // plantilla tal como viene en el HTML, capturada antes de restaurar nada
+  respaldo: false,   // ¿queda una cotización anterior recuperable con "Deshacer"?
+  _timer: null,
+
+  // Lee el estado actual: todo campo [data-persist], las tarjetas quitables
+  // [data-oculto-key] (ej. los pasos de "por qué"), y las filas y la moneda.
+  leer(){
+    const datos = {};
+    document.querySelectorAll('[data-persist]').forEach(el => {
+      datos[el.dataset.persist] = ('value' in el) ? el.value : el.textContent;
+    });
+    document.querySelectorAll('[data-oculto-key]').forEach(el => {
+      datos[el.dataset.ocultoKey] = !!el.hidden;
+    });
+    datos.rows = state.rows;
+    datos.cur = state.cur;
+    return datos;
+  },
+  // Aplica un estado guardado al DOM y al state, y refresca lo derivado (totales, UI de moneda, etc).
+  aplicar(datos){
+    document.querySelectorAll('[data-persist]').forEach(el => {
+      const k = el.dataset.persist;
+      if (!(k in datos)) return;
+      if ('value' in el) el.value = datos[k]; else el.textContent = datos[k];
+    });
+    document.querySelectorAll('[data-oculto-key]').forEach(el => {
+      const k = el.dataset.ocultoKey;
+      if (k in datos) el.hidden = !!datos[k];
+    });
+    state.rows = Array.isArray(datos.rows) ? clonar(datos.rows) : [];
+    state.cur = datos.cur === 'CLP' ? 'CLP' : 'UF';
+    refrescarVista();
+  },
+  capturarDefaults(){ this.defaults = clonar(this.leer()); },
+
+  cargar(){
+    try{
+      const crudo = localStorage.getItem(CLAVE_GUARDADO);
+      if (crudo) this.aplicar(JSON.parse(crudo));
+    }catch(e){ console.warn("No se pudo leer lo guardado:", e); }
+  },
+
+  guardar(){
+    clearTimeout(this._timer);
+    if (this.respaldo){ this.respaldo = false; sincronizarBotonDeshacer(); } // se edita -> ya no hay vuelta atrás
+    marcarEstado("· guardando…");
+    this._timer = setTimeout(() => this._escribir(), 400);
+  },
+  _escribir(){
+    try{
+      localStorage.setItem(CLAVE_GUARDADO, JSON.stringify(this.leer()));
+      const h = new Date();
+      marcarEstado("· guardado " + String(h.getHours()).padStart(2,'0') + ":" + String(h.getMinutes()).padStart(2,'0'));
+    }catch(e){ marcarEstado("· no se pudo guardar", true); }
+  },
+
+  // Vuelve a la plantilla en blanco. Lo que había queda respaldado aparte hasta el próximo "Nueva".
+  reiniciar(){
+    clearTimeout(this._timer);
+    this.respaldo = false;
+    try{
+      localStorage.setItem(CLAVE_RESPALDO, JSON.stringify(this.leer()));
+      this.respaldo = true;
+    }catch(e){ console.warn("No se pudo respaldar la cotización anterior:", e); }
+    this.aplicar(this.defaults);
+    initHead(true); // código y fecha nuevos
+    this._escribir();
+    sincronizarBotonDeshacer();
+  },
+  // Sólo vale entre un "Nueva" y la primera edición siguiente.
+  deshacer(){
+    if (!this.respaldo) return false;
+    let datos;
+    try{
+      const crudo = localStorage.getItem(CLAVE_RESPALDO);
+      if (!crudo) return false;
+      datos = JSON.parse(crudo);
+    }catch(e){ console.warn("No se pudo recuperar el respaldo:", e); return false; }
+    this.aplicar(datos);
+    localStorage.removeItem(CLAVE_RESPALDO);
+    this.respaldo = false;
+    this._escribir();
+    sincronizarBotonDeshacer();
+    return true;
+  }
+};
+
+/* ---------------- Vista: sincronizar lo derivado del estado ---------------- */
+function syncCurUI(){
+  document.querySelectorAll('#curSeg button').forEach(b => b.classList.toggle('active', b.dataset.cur === state.cur));
+  document.getElementById('ph1').textContent = '('+state.cur+')';
+  document.getElementById('ph2').textContent = '('+state.cur+')';
+}
+function autoGrowAll(){
+  document.querySelectorAll('textarea.fld.auto, #notes').forEach(autoGrow);
+}
+function marcarEstado(txt, error){
+  const el = document.getElementById('saveState');
+  el.textContent = txt;
+  el.style.color = error ? "var(--signal)" : "var(--lsteel)";
+}
+function sincronizarBotonDeshacer(){
+  document.getElementById('btnDeshacer').hidden = !Store.respaldo;
+}
+function bloquearEnter(el){
+  // Campos de una sola idea (título, correo, tarjetas de "por qué"): Enter no abre línea nueva,
+  // el texto largo empuja el alto del campo hacia abajo solo (autoGrow / wrap normal).
+  el.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });
+}
+function refrescarVista(){
+  syncCurUI();
+  renderRows();
+  autoGrowAll();
+  revalidarCampos();
+  actualizarWhyGrid();
+}
+
+/* ---------------- "Por qué Alto Test": tarjetas que se pueden quitar ---------------- */
+// Se puede quitar un paso entero (no sólo vaciar su texto) para no dejar una tarjeta
+// vacía cuando la venta no es de sistemas anticaídas. Se guarda vía [data-oculto-key].
+function actualizarWhyGrid(){
+  const items = Array.from(document.querySelectorAll('.why-item'));
+  const visibles = items.filter(it => !it.hidden);
+  document.getElementById('whyGrid').style.setProperty('--n', Math.max(visibles.length, 1));
+  items.forEach(it => it.classList.remove('sin-borde'));
+  if (visibles.length) visibles[visibles.length - 1].classList.add('sin-borde');
+  actualizarWhyRestaurar(items.filter(it => it.hidden));
+}
+function actualizarWhyRestaurar(ocultos){
+  const cont = document.getElementById('whyRestaurar');
+  cont.innerHTML = '';
+  cont.hidden = ocultos.length === 0;
+  ocultos.forEach(it => {
+    const tituloEl = it.querySelector('h3');
+    const titulo = (tituloEl && tituloEl.textContent.trim()) || 'Paso';
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.innerHTML = '<i data-lucide="plus" class="ic"></i>' + escAttr(titulo);
+    btn.addEventListener('click', () => {
+      it.hidden = false;
+      actualizarWhyGrid();
+      Store.guardar();
+      if (window.lucide) lucide.createIcons();
+    });
+    cont.appendChild(btn);
+  });
+  if (window.lucide) lucide.createIcons();
+}
+function wireWhyDel(){
+  document.querySelectorAll('[data-why-del]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      btn.closest('.why-item').hidden = true;
+      actualizarWhyGrid();
+      Store.guardar();
+    });
+  });
+}
+// Conecta autoguardado (y, en los campos de la ficha, autoajuste + bloqueo de Enter)
+// a todo elemento marcado [data-persist].
+function wirePersistCampos(){
+  document.querySelectorAll('[data-persist]').forEach(el => {
+    if (el.tagName === 'TEXTAREA' && el.classList.contains('auto')){
+      bloquearEnter(el);
+      el.addEventListener('input', () => { autoGrow(el); Store.guardar(); });
+    } else if (el.tagName === 'TEXTAREA' || el.tagName === 'INPUT'){
+      el.addEventListener('input', () => Store.guardar());
+    } else if (el.isContentEditable){
+      bloquearEnter(el);
+      el.addEventListener('input', () => Store.guardar());
+    }
+  });
 }
 
 /* ---------------- Render de filas ---------------- */
@@ -421,6 +628,7 @@ function bindRowEvents(){
         cell.innerHTML = tp.main + '<span class="alt">' + tp.alt + '</span>';
         renderTotals();
       }
+      Store.guardar();
     });
   });
   // Precio: al enfocar se muestra el número en crudo (editable); al salir se reformatea con miles
@@ -439,6 +647,7 @@ function bindRowEvents(){
     b.addEventListener('click', e => {
       state.rows.splice(+e.currentTarget.dataset.del, 1);
       renderRows();
+      Store.guardar();
     });
   });
 }
@@ -468,6 +677,7 @@ document.getElementById('curSeg').addEventListener('click', e => {
   document.getElementById('ph1').textContent = '('+to+')';
   document.getElementById('ph2').textContent = '('+to+')';
   renderRows();
+  Store.guardar();
 });
 
 /* ---------------- Valor UF (según la fecha de la propuesta) ---------------- */
@@ -619,19 +829,28 @@ fechaFld.addEventListener('blur', () => {
 document.getElementById('addRow').addEventListener('click', () => {
   state.rows.push({ concepto:"", cant:1, precio:0 });
   renderRows();
+  Store.guardar();
   const last = tbody.querySelector('tr:last-child .concepto');
   if(last) last.focus();
 });
 
 /* ---------------- Encabezado: código y fecha ---------------- */
-(function initHead(){
-  const d = new Date();
+// Se completan solo si vienen vacíos (primera visita) o si forzar=true (botón "Nueva").
+// Si ya había un código/fecha restaurados de localStorage, se respetan: es la misma cotización.
+function initHead(forzar){
+  const codeOut = document.getElementById('codeOut');
+  const fechaFld2 = document.getElementById('fechaFld');
   const p = n => String(n).padStart(2,'0');
-  const code = "COT-" + d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + "-" + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
-  document.getElementById('codeOut').textContent = code;
-  document.title = code; // el navegador usa el título como nombre por defecto del PDF
-  document.getElementById('fechaFld').value = p(d.getDate()) + "/" + p(d.getMonth()+1) + "/" + d.getFullYear();
-})();
+  if (forzar || !codeOut.textContent || codeOut.textContent === 'COT-—'){
+    const d = new Date();
+    codeOut.textContent = "COT-" + d.getFullYear() + p(d.getMonth()+1) + p(d.getDate()) + "-" + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+  }
+  document.title = codeOut.textContent; // el navegador usa el título como nombre por defecto del PDF
+  if (forzar || !fechaFld2.value){
+    const d = new Date();
+    fechaFld2.value = p(d.getDate()) + "/" + p(d.getMonth()+1) + "/" + d.getFullYear();
+  }
+}
 
 /* ---------------- Notas: crecer automáticamente ---------------- */
 const notes = document.getElementById('notes');
@@ -658,28 +877,41 @@ function formateaRut(rut){
 }
 function validaEmail(v){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(v).trim()); }
 
-document.querySelectorAll('.fld[data-validate]').forEach(inp => {
+function evaluarValidacion(inp, formatear){
   const tipo = inp.dataset.validate;
   const errTag = inp.closest('.cell') ? inp.closest('.cell').querySelector('.verr') : null;
-  const evaluar = (formatear) => {
-    const v = inp.value.trim();
-    if (v === ''){ inp.classList.remove('invalid'); if(errTag) errTag.hidden = true; return; }
-    const ok = tipo === 'rut' ? validaRut(v) : validaEmail(v);
-    if (ok && formatear && tipo === 'rut') inp.value = formateaRut(v);
-    inp.classList.toggle('invalid', !ok);
-    if (errTag) errTag.hidden = ok;
-  };
-  inp.addEventListener('input', () => evaluar(false)); // marca mientras escribe
-  inp.addEventListener('blur',  () => evaluar(true));   // al salir, formatea el RUT válido
+  const v = inp.value.trim();
+  if (v === ''){ inp.classList.remove('invalid'); if(errTag) errTag.hidden = true; return; }
+  const ok = tipo === 'rut' ? validaRut(v) : validaEmail(v);
+  if (ok && formatear && tipo === 'rut') inp.value = formateaRut(v);
+  inp.classList.toggle('invalid', !ok);
+  if (errTag) errTag.hidden = ok;
+}
+document.querySelectorAll('.fld[data-validate]').forEach(inp => {
+  inp.addEventListener('input', () => evaluarValidacion(inp, false)); // marca mientras escribe
+  inp.addEventListener('blur',  () => evaluarValidacion(inp, true));  // al salir, formatea el RUT válido
 });
+// Refleja la validez de lo restaurado (ej. un RUT guardado se formatea igual que uno recién tipeado).
+function revalidarCampos(){
+  document.querySelectorAll('.fld[data-validate]').forEach(inp => evaluarValidacion(inp, true));
+}
 
 /* ---------------- Init ---------------- */
-document.getElementById('ph1').textContent = '('+state.cur+')';
-document.getElementById('ph2').textContent = '('+state.cur+')';
-renderRows();
-autoGrow(notes);
+Store.capturarDefaults();  // plantilla tal como viene en el HTML, antes de restaurar nada
+Store.cargar();            // aplica lo guardado en este navegador, si existe
+initHead(false);           // completa código/fecha solo si quedaron vacíos
+wirePersistCampos();       // autoguardado (+ autoajuste y bloqueo de Enter en los campos nuevos)
+wireWhyDel();              // botón × de cada tarjeta de "por qué"
+refrescarVista();          // por si no había nada guardado: deja rows/moneda/validación al día igual
 if (window.lucide) lucide.createIcons(); // renderiza los íconos Lucide
-fetchUF(); // intenta valor real; si falla, queda el manual
+fetchUF();                 // intenta valor real; si falla, queda el manual
+sincronizarBotonDeshacer();
+
+document.getElementById('btnNueva').addEventListener('click', () => {
+  if (!confirm('¿Iniciar una cotización nueva?\n\nSe vacían los datos del cliente, los ítems y los textos editados. Lo actual queda guardado: el botón "Deshacer" lo recupera mientras no escriba nada más.')) return;
+  Store.reiniciar();
+});
+document.getElementById('btnDeshacer').addEventListener('click', () => { Store.deshacer(); });
 </script>
 </body>
 </html>
