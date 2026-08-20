@@ -45,6 +45,26 @@ export function useQuoteStore(onAuthExpired: () => void) {
   const [booting, setBooting] = useState(() => !!readMirror())
   const firstChangeAfterReset = useRef(false)
   const saveSeq = useRef(0)
+  // Si la sesión arranca sin mirror local, `quote` nace de initialTemplate() —
+  // una cotización en blanco que nadie tocó. Sin esta guarda, el solo hecho de
+  // abrir la app (o que la abra un bot, o correr un test) crea un documento
+  // permanente en el Worker. Se compara contra una foto del `quote` del
+  // primer render (por referencia, no un flag consumido una vez): React
+  // StrictMode monta cada efecto dos veces en desarrollo (monta → limpia →
+  // monta) y un flag booleano se "gasta" en la pasada fantasma, dejando la
+  // real sin protección — probado en propuesta_tecnica_react, ver su
+  // CLAUDE.md. Sólo aplica si no había mirror; una sesión que vuelve con
+  // cambios sin sincronizar sigue guardando como siempre.
+  const hadMirrorOnBoot = useRef(!!readMirror())
+  const pristineQuote = useRef(quote)
+  // ufValue se actualiza solo al montar (ver el useEffect de refetchUF en
+  // QuoteEditor.tsx) — eso también cambia la referencia de `quote` sin que el
+  // usuario haya escrito nada, así que una comparación estricta por
+  // referencia marcaría la cotización como "tocada" apenas resuelve el
+  // fetch. Se ignora ese campo puntual al decidir si sigue prístina.
+  function isPristineIgnoringUf(a: QuoteState, b: QuoteState): boolean {
+    return JSON.stringify({ ...a, ufValue: 0 }) === JSON.stringify({ ...b, ufValue: 0 })
+  }
   const onAuthExpiredRef = useRef(onAuthExpired)
   useEffect(() => {
     onAuthExpiredRef.current = onAuthExpired
@@ -70,6 +90,10 @@ export function useQuoteStore(onAuthExpired: () => void) {
   }, [])
 
   useEffect(() => {
+    if (!hadMirrorOnBoot.current && isPristineIgnoringUf(quote, pristineQuote.current)) {
+      pristineQuote.current = quote // re-basar: el auto-fetch de la UF no cuenta como "tocado"
+      return
+    }
     const seq = ++saveSeq.current
     const t = setTimeout(async () => {
       writeMirror(quote)
