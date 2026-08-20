@@ -5,10 +5,12 @@ Contexto para retomar este proyecto sin releer todo el chat. Aquí están las
 
 ## Qué es
 
-**Reescritura completa en Vite+React+TS de `../propuesta_economica`**, que
-sigue siendo vanilla HTML/CSS/JS y **sigue siendo la que usa Camilo hoy**.
-Este proyecto vive en paralelo, sin tocar el original, hasta que se pruebe
-y se decida reemplazarlo — ver "Estado" más abajo.
+**Reescritura completa en Vite+React+TS de `../propuesta_economica`** (que
+queda como vanilla HTML/CSS/JS, ahora solo de referencia histórica — ver el
+aviso al inicio de su `CLAUDE.md`). **Este es el que está en producción**
+desde el 2026-08-20: `quotegenerator.altotest.cl` (Vercel, cuenta personal
+de Matías, no la de Alto Test en Cloudflare) sirve este build. Ver
+"Despliegue" más abajo para el detalle de cómo quedó el repo/hosting.
 
 **Por qué esta reescritura:** no fue por moda de stack. `propuesta_economica`
 es un solo `index.html` de ~35KB sin separación de responsabilidades (HTML,
@@ -62,7 +64,8 @@ src/
     api.ts                   fetchReport/saveReport/listReports/deleteReport, kind="economica"
     format.ts                 formatCLP/formatUF/currencyPair/parseNumber/formatPrice —
                               toda la aritmética de moneda vive acá, un solo lugar
-    validate.ts                isValidRut (módulo 11) + formatRut, isValidEmail
+    validate.ts                isValidRut (módulo 11) + formatRut + cleanRutInput,
+                                isValidEmail, isValidPhone + formatPhone + cleanPhoneInput
     date.ts                     autoformato/validación de fecha, conversión a ISO
     uf.ts                        fetchUF: caché por fecha + secuenciador + las mismas
                                  2 fuentes (indicadoreconomico.cl, boostr.cl de respaldo)
@@ -70,7 +73,9 @@ src/
   components/
     Toolbar.tsx, HistoryMenu.tsx, SyncStatus.tsx, AccessGate.tsx   no-print / infra —
       calcados de informe_levantamiento, sólo cambia el tipo de dato que manejan
-    ClientFields.tsx        ficha de cliente (RUT/correo/fecha validados)
+    ClientFields.tsx        ficha de cliente (RUT/correo/teléfono/fecha validados en vivo)
+    DatePicker.tsx             calendario propio en popover para Fecha — no es
+                                <input type=date> nativo, ver "Validación de campos"
     WhySection.tsx            "¿Por qué Alto Test?" — 5 tarjetas removibles
     ItemsTable.tsx              tabla de ítems (precio: crudo al enfocar, formateado al salir)
     TotalsBox.tsx                 notas + desglose de totales
@@ -108,6 +113,48 @@ tal cual desde `generador/`, no se reinventó.
 - El input manual de UF en el Toolbar (`onManualUF`) pisa el valor sin
   volver a consultar — mismo comportamiento que la vanilla ("· manual").
 
+## Validación de campos (`lib/validate.ts`, `ClientFields.tsx`, `DatePicker.tsx`)
+
+Pedido explícito de Matías, **más estricto que el original** (el vanilla no
+validaba teléfono ni limitaba largo de tipeo) — no es fidelidad 1:1 acá a
+propósito:
+
+- **RUT**: módulo 11 (`isValidRut`) igual que siempre, pero además
+  `cleanRutInput` corta lo que se tipea en vivo a 9 "dígitos" (8 del cuerpo +
+  1 verificador, que puede ser `K`) — antes se podía seguir escribiendo sin
+  límite (`11.111.111-1111111`) y sólo se marcaba inválido, ahora no deja
+  seguir.
+- **Correo**: `isValidEmail` es un regex más estricto que el original —
+  rechaza dominios con punto al inicio o dobles puntos (`asd@..l-133123F`
+  pasaba antes, ahora no) y exige un TLD de solo letras al final.
+- **Teléfono**: nuevo, no existía en el vanilla. `isValidPhone` exige 9
+  dígitos empezando en 9 (celular chileno), con o sin el `56` del código de
+  país. `cleanPhoneInput` corta el tipeo a 11 dígitos en vivo (mismo criterio
+  que el RUT). `formatPhone` autoformatea a `+56 9 XXXX XXXX` al perder el
+  foco — mismo patrón que `formatRut`.
+- **Fecha**: sigue aceptando tipeo manual con máscara `dd/mm/aaaa`
+  (`formatDateInput`/`isValidDate`, sin cambios), pero ahora hay además un
+  **datepicker propio** (`DatePicker.tsx`, no `<input type=date>` nativo —
+  decisión explícita para tener el mismo look en cualquier navegador y
+  controlar el formato exacto). Es un popover con grilla de 6×7 días,
+  navegación de mes, hoy/seleccionado resaltados; se cierra con click afuera
+  o Escape. El botón y el popover llevan `.no-print` — no deben aparecer en
+  el PDF, solo el texto ya tipeado en el input.
+- El patrón `useValidated` (dentro de `ClientFields.tsx`) es genérico: recibe
+  `validate`/`format` y expone `invalid`/`onBlur`/`onInput` — se usa igual
+  para RUT, correo y teléfono. Si se agrega un campo validado nuevo, seguir
+  ese mismo patrón en vez de inventar uno.
+
+## Ficha de cliente: por qué el grid es de 8 columnas y no 4
+
+`.client-grid` originalmente calcaba el vanilla (`repeat(4,1fr)`, Dirección
+con `grid-column:span 2`) — con eso Correo quedaba en 1/4 del ancho de fila y
+un correo largo (`cristobal.contreras@cbre.com`) se cortaba a media palabra.
+Se pasó a `repeat(8,1fr)` para poder repartir en octavos: Dirección bajó de
+4/8 a 3/8, Correo subió de 2/8 a 3/8, Teléfono se mantuvo en 2/8. Mismo "bug"
+existe en el vanilla original — acá se corrigió a pedido explícito, no es
+fidelidad ciega.
+
 ## Marca — sin la variante de anclajes
 
 `Logomark.tsx`/`Wordmark.tsx` acá son la versión **plana** (puntos simples
@@ -117,23 +164,58 @@ anclajes); no tiene sentido en una cotización comercial genérica. Si se
 toca el isotipo en algún proyecto, revisar cuál de las dos variantes
 corresponde antes de copiar sin pensar.
 
-## Estado — no es todavía el reemplazo
+## Verificado
 
-- **No sustituye a `../propuesta_economica`.** Ese proyecto vanilla sigue
-  siendo la fuente real que usa Camilo; este vive en paralelo hasta
-  probarse a fondo.
-- Verificado con Playwright (headless, no hay navegador con GUI en el
-  entorno): portón de acceso, guardado/carga contra el Worker en
-  producción, historial cruzado entre dos perfiles de navegador distintos
-  (simulando dos dispositivos), RUT válido/inválido, conversión de moneda,
-  cálculo de totales, PDF a tamaño Oficio (21.6×33cm, coincide exacto).
-  Screenshots comparados contra el diseño original — visualmente
-  equivalente.
-- **Pendiente antes de reemplazar el original**: que Matías/Camilo lo
-  prueben de verdad en un caso real, decidir qué pasa con el repo git del
-  original (¿se renombra este a `propuesta_economica` y el vanilla queda
-  de respaldo con otro nombre? ¿se mantienen los dos un tiempo?), y migrar
-  cualquier cotización que Camilo ya tenga guardada en el `localStorage`
-  de la versión vieja (esa vive sólo en su navegador, no en el Worker — no
-  hay forma automática de traerla, habría que pasarla a mano si hace falta
-  conservarla).
+Con Playwright (headless, no hay navegador con GUI en el entorno): portón de
+acceso, guardado/carga contra el Worker en producción, historial cruzado
+entre dos perfiles de navegador distintos (simulando dos dispositivos), RUT/
+correo/teléfono válido/inválido con los topes de tipeo, datepicker, PDF a
+tamaño Oficio (21.6×33cm, coincide exacto). Screenshots comparados pixel a
+pixel contra el sitio en producción antes del reemplazo (headers, pie,
+tabla, totales) — se cazaron y corrigieron ahí mismo dos bugs reales de
+fidelidad: el logo del encabezado del documento (usaba el componente
+genérico `Logomark` en vez de replicar el `.wm`+SVG del original) y el pie
+de página no llegaba al fondo de la hoja (faltaba `display:flex` en
+`.sheet` + `flex:1` en `.doc-body`, que en el original fuerza el pie al ras
+incluso en pantalla, no solo al imprimir).
+
+## Despliegue (ya hecho, 2026-08-20)
+
+**Este proyecto reemplazó al original en el mismo repo.** No se creó un repo
+nuevo — `Alto-Test-Spa/Commercial-Quote-Generator` es el mismo, pero su
+`main` ahora tiene el árbol de archivos de este proyecto:
+
+1. Se armó git acá (`git init`, este proyecto no tenía) y se pusheó como
+   rama `react-rewrite` (no directo a `main`) — para no tocar producción
+   antes de probar.
+2. Vercel (el hosting real de `quotegenerator.altotest.cl` — está en la
+   cuenta **personal** de Matías, no en la de Alto Test en Cloudflare, y no
+   apareció en ningún listado de la API de Cloudflare por eso) crea Preview
+   Deployments automáticos por rama. Se configuró ahí
+   `VITE_REPORTS_ENDPOINT` como variable de entorno y se confirmó Framework
+   Preset = Vite.
+3. Se verificó el preview y se promovió manualmente a producción desde el
+   dashboard de Vercel (botón "Promote to Production") — esto NO cambia qué
+   rama considera Vercel su "Production Branch" (seguía siendo `main`).
+4. Para que el historial de git no quedara inconsistente con lo que ya
+   estaba en vivo (si alguien pusheaba a `main` sin saber, Vercel iba a
+   redesplegar el vanilla viejo encima sin aviso), se mergeó `react-rewrite`
+   sobre `main` con `git merge --allow-unrelated-histories -X theirs`
+   (los historiales no comparten commit base — este repo se inicializó de
+   cero, no se clonó del original) y se pusheó. GitHub **no deja abrir un
+   PR entre historiales sin ancestro común** ("There isn't anything to
+   compare") aunque sí muestra el diff — por eso el merge se hizo local y
+   se pusheó directo, con confirmación explícita del usuario antes del push
+   a `main` (bloqueado una vez por el clasificador de auto-mode, reintentado
+   tras pedir permiso).
+5. `../propuesta_economica` (vanilla) quedó como carpeta local histórica,
+   con su propio `origin/main` ahora apuntando al mismo commit de React —
+   **no se hizo `git pull` ahí a propósito**, para no reemplazar en
+   silencio los archivos vanilla en esa carpeta. Ver el aviso al inicio de
+   su `CLAUDE.md`.
+
+**Pendiente**: confirmar en Vercel (Settings → Git) que la Production
+Branch quedó en `main` y no en `react-rewrite` tras el promote manual —
+si no, los próximos pushes a `main` no se despliegan solos. Migrar
+cualquier cotización que Camilo tuviera guardada solo en el `localStorage`
+del navegador viejo (no hay forma automática, vivía fuera del Worker).
