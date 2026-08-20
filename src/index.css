@@ -1,0 +1,1089 @@
+@import "tailwindcss";
+
+/* Mismos tokens de marca que el resto de Alto Test — no duplicar valores a mano en otro
+   lado, cualquier color nuevo debe salir de esta paleta. */
+@theme {
+  --color-paper: #f4f5f2;
+  --color-stage: #ddded9;
+  --color-ink: #10151e;
+  --color-ink-soft: #1b2430;
+  --color-steel: #4c6b7a;
+  --color-steel-light: #8fa3ad;
+  --color-steel-pale: #cbd5d8;
+  --color-steel-body: #2a313b;
+  --color-signal: #c2491f;
+  --color-signal-glow: #e2723d;
+  --color-signal-deep: #8a3316;
+
+  --font-sans: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", monospace;
+}
+
+@layer base {
+  html {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  body {
+    margin: 0;
+    background: var(--color-stage);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+}
+
+@layer components {
+  .icon {
+    width: 14px;
+    height: 14px;
+    stroke-width: 2;
+  }
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-steel);
+    margin: 0;
+  }
+
+  /* ═════════════════ Autoajuste sin JS (grow-wrap) ═════════════════ */
+  .grow-wrap {
+    display: grid;
+    width: 100%;
+  }
+  .grow-wrap::after {
+    content: attr(data-value) ' ';
+    visibility: hidden;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .grow-wrap > textarea,
+  .grow-wrap::after {
+    grid-area: 1 / 1 / 2 / 2;
+  }
+  .grow-wrap > textarea {
+    width: 100%;
+    border: 0;
+    background: transparent;
+    outline: none;
+    resize: none;
+    overflow: hidden;
+  }
+
+  /* ═════════════════ Toolbar ═════════════════ */
+  .toolbar {
+    position: sticky;
+    top: 0;
+    z-index: 60;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 11px;
+    background: var(--color-ink);
+    color: var(--color-paper);
+    padding: 10px 20px;
+  }
+  .toolbar-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 9px;
+    font-family: var(--font-mono);
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    font-size: 14px;
+  }
+  .toolbar-spacer {
+    flex: 1;
+  }
+  .toolbar-divider {
+    width: 1px;
+    height: 22px;
+    background: rgb(244 245 242 / 20%);
+  }
+  .toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+  }
+  .toolbar-group .eyebrow {
+    color: var(--color-steel-light);
+  }
+  .toolbar-input {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: rgb(255 255 255 / 8%);
+    border: 1px solid rgb(244 245 242 / 30%);
+    color: var(--color-paper);
+    padding: 6px 9px;
+    outline: none;
+    border-radius: 2px;
+  }
+  .toolbar-input:focus {
+    border-color: var(--color-signal);
+  }
+  .toolbar-input--uf {
+    width: 90px;
+  }
+  .uf-state {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--color-steel-light);
+    white-space: nowrap;
+  }
+  .currency-seg {
+    display: inline-flex;
+    border: 1px solid rgb(244 245 242 / 30%);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .currency-seg button {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    padding: 6px 13px;
+    background: transparent;
+    border: 0;
+    color: var(--color-steel-light);
+    cursor: pointer;
+  }
+  .currency-seg button + button {
+    border-left: 1px solid rgb(244 245 242 / 30%);
+  }
+  .currency-seg button.is-active {
+    background: var(--color-signal);
+    color: #fff;
+  }
+  .toolbar-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    background: var(--color-paper);
+    color: var(--color-ink);
+    border: 0;
+    padding: 7px 13px;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .toolbar-btn:hover {
+    background: var(--color-signal);
+    color: #fff;
+  }
+  .toolbar-btn--ghost {
+    background: transparent;
+    color: var(--color-steel-light);
+    border: 1px solid rgb(244 245 242 / 30%);
+  }
+  .toolbar-btn--ghost:hover {
+    color: #fff;
+    border-color: var(--color-signal);
+    background: transparent;
+  }
+  .toolbar-btn--ghost.is-on {
+    color: var(--color-paper);
+    border-color: var(--color-signal);
+    background: rgb(194 73 31 / 25%);
+  }
+
+  /* ═════════════════ Estado de sincronización ═════════════════ */
+  .sync-status {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    padding: 0 4px;
+    white-space: nowrap;
+  }
+  .sync-status--saving,
+  .sync-status--saved {
+    color: var(--color-steel-light);
+  }
+  .sync-status--offline,
+  .sync-status--error {
+    color: var(--color-signal-glow);
+  }
+  .icon-spin {
+    animation: sync-spin 0.9s linear infinite;
+  }
+  @keyframes sync-spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  /* ═════════════════ Historial ═════════════════ */
+  .history-menu {
+    position: relative;
+  }
+  .history-dropdown {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 8px);
+    width: 320px;
+    max-height: 380px;
+    overflow-y: auto;
+    background: #171d28;
+    border: 1px solid rgb(244 245 242 / 12%);
+    border-radius: 2px;
+    box-shadow: 0 18px 40px -12px rgb(16 21 30 / 60%);
+    z-index: 70;
+  }
+  .history-empty {
+    padding: 16px;
+    font-size: 12px;
+    color: var(--color-steel-light);
+    margin: 0;
+  }
+  .history-item {
+    display: flex;
+    align-items: stretch;
+    border-bottom: 1px solid rgb(244 245 242 / 8%);
+  }
+  .history-item:last-child {
+    border-bottom: 0;
+  }
+  .history-item.is-current {
+    background: rgb(194 73 31 / 12%);
+  }
+  .history-item-open {
+    flex: 1;
+    min-width: 0;
+    text-align: left;
+    padding: 10px 6px 10px 12px;
+    background: transparent;
+    border: 0;
+    cursor: pointer;
+  }
+  .history-item-open:hover {
+    background: rgb(255 255 255 / 4%);
+  }
+  .history-item-code {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--color-signal-glow);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .history-item-tag {
+    color: var(--color-steel-light);
+  }
+  .history-item-client {
+    font-size: 12px;
+    color: var(--color-paper);
+    margin: 3px 0 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .history-item-date {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-steel-light);
+    margin: 3px 0 0;
+  }
+  .history-item-remove {
+    flex: 0 0 auto;
+    width: 26px;
+    margin: 8px 8px 8px 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--color-steel-light);
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .history-item-remove:hover {
+    color: var(--color-signal);
+    border-color: var(--color-signal);
+  }
+
+  /* ═════════════════ Portón de acceso / carga ═════════════════ */
+  .boot-screen {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-ink);
+    color: var(--color-steel-light);
+    font-family: var(--font-mono);
+    font-size: 12px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .access-gate {
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--color-ink);
+    padding: 24px;
+  }
+  .access-gate-card {
+    width: 100%;
+    max-width: 360px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    text-align: center;
+  }
+  .access-gate-title {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    color: var(--color-paper);
+    font-size: 14px;
+    font-weight: 600;
+    margin: 8px 0 0;
+  }
+  .access-gate-title .icon {
+    color: var(--color-signal);
+  }
+  .access-gate-hint {
+    font-size: 11.5px;
+    line-height: 1.5;
+    color: var(--color-steel-light);
+    margin: 0;
+  }
+  .access-gate-input {
+    width: 100%;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    background: rgb(255 255 255 / 8%);
+    border: 1px solid rgb(244 245 242 / 25%);
+    color: var(--color-paper);
+    padding: 10px 12px;
+    outline: none;
+    border-radius: 2px;
+    text-align: center;
+  }
+  .access-gate-input:focus {
+    border-color: var(--color-signal);
+  }
+  .access-gate-error {
+    font-size: 11.5px;
+    color: var(--color-signal-glow);
+    margin: 0;
+  }
+
+  /* ═════════════════ Hoja ═════════════════ */
+  .sheet {
+    width: 21.6cm;
+    min-height: 33cm;
+    margin: 22px auto;
+    background: var(--color-paper);
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 0 0 1px rgb(16 21 30 / 6%), 0 20px 44px -24px rgb(16 21 30 / 40%);
+  }
+
+  /* ═════════════════ Encabezado ═════════════════ */
+  .doc-head {
+    background: var(--color-ink);
+    color: var(--color-paper);
+    padding: 22px 42px 18px;
+  }
+  .doc-head-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+  }
+  .doc-wm {
+    font-family: var(--font-mono);
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+  .doc-wm-svg {
+    display: block;
+    margin-top: 5px;
+  }
+  .doc-tagline {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--color-steel-light);
+    margin: 6px 0 0;
+    letter-spacing: 0.04em;
+  }
+  .doc-code-box {
+    text-align: right;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-steel-light);
+    line-height: 1.7;
+  }
+  .doc-code {
+    color: var(--color-paper);
+    font-weight: 600;
+  }
+  .doc-title-block {
+    margin-top: 20px;
+  }
+  .doc-title {
+    margin: 0;
+    font-size: 33px;
+    font-weight: 600;
+    letter-spacing: -0.05em;
+    line-height: 1;
+  }
+  .doc-subtitle {
+    margin: 6px 0 0;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-signal-glow);
+  }
+
+  /* ═════════════════ Ficha de cliente ═════════════════ */
+  .client-grid {
+    display: grid;
+    /* 8 columnas en vez de 4: permite que Dirección y Correo ocupen un ancho
+       intermedio (3/8 cada una) en vez de que Correo quede apretado en 1/4
+       mientras Dirección le sobra la mitad de la fila. */
+    grid-template-columns: repeat(8, 1fr);
+    border-bottom: 1px solid rgb(16 21 30 / 14%);
+  }
+  .client-cell {
+    grid-column: span 2;
+    padding: 9px 16px;
+    border-right: 1px solid rgb(16 21 30 / 14%);
+    border-top: 1px solid rgb(16 21 30 / 14%);
+  }
+  .client-cell:nth-child(4n) {
+    border-right: 0;
+  }
+  .client-cell--wide {
+    grid-column: span 3;
+  }
+  .client-cell--correo {
+    grid-column: span 3;
+  }
+  .field-error {
+    color: var(--color-signal);
+    font-family: var(--font-mono);
+    letter-spacing: 0.06em;
+    text-transform: none;
+    font-size: 9px;
+  }
+
+  /* ═════════════════ Campos ═════════════════ */
+  /* Campos con autoajuste (Cliente, Activo, Dirección, Correo, Concepto, Notas):
+     la clase de variante llega también al `.grow-wrap` contenedor (ver AutoTextarea),
+     así que la fuente/padding se declara IGUAL para el textarea real y su espejo
+     `::after` — nunca por herencia entre contenedor e hijo, que dejaría a alguno con
+     el padding contado dos veces (contenedor + hijo). */
+  .grow-wrap.field > textarea,
+  .grow-wrap.field::after {
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--color-ink);
+    padding: 3px 0 0;
+    line-height: 1.35;
+  }
+  .grow-wrap.field > textarea:focus {
+    color: var(--color-signal);
+  }
+  .grow-wrap.field > textarea::placeholder {
+    color: var(--color-steel-light);
+    font-weight: 400;
+  }
+  .grow-wrap.field--concept > textarea,
+  .grow-wrap.field--concept::after {
+    font-weight: 500;
+    font-size: 12.5px;
+  }
+  .grow-wrap.field--notes {
+    min-height: 90px;
+    border: 1px solid rgb(16 21 30 / 14%);
+    background: #fff;
+  }
+  .grow-wrap.field--notes > textarea,
+  .grow-wrap.field--notes::after {
+    font-size: 11.5px;
+    line-height: 1.55;
+    color: var(--color-steel-body);
+    padding: 10px 12px;
+  }
+  /* A diferencia del resto de los campos, las notas no cambian de color al enfocar
+     (solo el borde) — igual que en el original. */
+  .grow-wrap.field--notes > textarea:focus {
+    color: var(--color-steel-body);
+  }
+  .grow-wrap.field--notes:focus-within {
+    border-color: var(--color-signal);
+  }
+
+  /* Campos sin autoajuste: RUT, Fecha, Teléfono, Cantidad, Precio unitario. */
+  input.field {
+    width: 100%;
+    display: block;
+    border: 0;
+    background: transparent;
+    font-family: var(--font-sans);
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--color-ink);
+    padding: 3px 0 0;
+    outline: none;
+    line-height: 1.35;
+  }
+  input.field:focus {
+    color: var(--color-signal);
+  }
+  input.field::placeholder {
+    color: var(--color-steel-light);
+    font-weight: 400;
+  }
+  .field--num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* ═════════════════ Datepicker (Fecha) ═════════════════ */
+  .datepicker {
+    position: relative;
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+  }
+  .datepicker > input.field {
+    flex: 1;
+    min-width: 0;
+  }
+  .datepicker-toggle {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    margin-bottom: 2px;
+    background: transparent;
+    border: 0;
+    color: var(--color-steel-light);
+    cursor: pointer;
+  }
+  .datepicker-toggle:hover {
+    color: var(--color-signal);
+  }
+  .datepicker-pop {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 70;
+    width: 216px;
+    padding: 10px;
+    background: var(--color-paper);
+    border: 1px solid rgb(16 21 30 / 14%);
+    border-radius: 2px;
+    box-shadow: 0 18px 40px -12px rgb(16 21 30 / 28%);
+  }
+  .datepicker-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .datepicker-head button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    background: transparent;
+    border: 0;
+    color: var(--color-steel);
+    cursor: pointer;
+  }
+  .datepicker-head button:hover {
+    color: var(--color-signal);
+  }
+  .datepicker-month {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--color-ink);
+  }
+  .datepicker-weekdays,
+  .datepicker-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+  }
+  .datepicker-weekdays span {
+    text-align: center;
+    font-family: var(--font-mono);
+    font-size: 9px;
+    color: var(--color-steel-light);
+    padding-bottom: 4px;
+  }
+  .datepicker-day {
+    aspect-ratio: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 0;
+    border-radius: 2px;
+    font-size: 11px;
+    color: var(--color-ink);
+    cursor: pointer;
+  }
+  .datepicker-day:hover {
+    background: rgb(16 21 30 / 8%);
+  }
+  .datepicker-day.is-today {
+    color: var(--color-signal);
+    font-weight: 600;
+  }
+  .datepicker-day.is-selected {
+    background: var(--color-signal);
+    color: var(--color-paper);
+  }
+
+  .editable {
+    outline: none;
+    cursor: text;
+    border-radius: 1px;
+  }
+  .editable:hover {
+    box-shadow: inset 0 -1.5px 0 rgb(16 21 30 / 22%);
+  }
+  .editable:focus {
+    box-shadow: inset 0 -1.5px 0 var(--color-signal);
+  }
+  .editable:empty::before {
+    content: attr(data-ph);
+    color: var(--color-steel-light);
+  }
+
+  /* ═════════════════ Cuerpo / secciones ═════════════════ */
+  .doc-body {
+    flex: 1;
+    padding: 16px 42px 6px;
+  }
+  .section-title {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .section-title-icon {
+    color: var(--color-signal);
+    flex: 0 0 auto;
+  }
+  .section-title-n {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--color-signal);
+  }
+  .section-title h2 {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    text-transform: uppercase;
+  }
+  .section-title-line {
+    flex: 1;
+    height: 1px;
+    background: rgb(16 21 30 / 14%);
+  }
+
+  /* ═════════════════ ¿Por qué Alto Test? ═════════════════ */
+  .why-section {
+    margin-bottom: 16px;
+  }
+  .why-lead {
+    font-size: 12.5px;
+    line-height: 1.55;
+    color: var(--color-steel-body);
+    max-width: 82%;
+    margin: 0 0 13px;
+  }
+  .why-grid {
+    display: grid;
+    grid-template-columns: repeat(var(--why-cols, 5), 1fr);
+    border: 1px solid rgb(16 21 30 / 14%);
+  }
+  .why-item {
+    position: relative;
+    padding: 13px 13px 14px;
+    border-right: 1px solid rgb(16 21 30 / 14%);
+  }
+  .why-item--last {
+    border-right: 0;
+  }
+  .why-item-remove {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgb(16 21 30 / 14%);
+    background: var(--color-paper);
+    color: var(--color-steel);
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .why-item-remove:hover {
+    border-color: var(--color-signal);
+    color: var(--color-signal);
+  }
+  .why-item-icon {
+    color: var(--color-signal);
+  }
+  .why-item h3 {
+    margin: 9px 0 4px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+  .why-item p {
+    margin: 0;
+    font-size: 9.5px;
+    line-height: 1.42;
+    color: var(--color-steel);
+  }
+  .why-restore {
+    margin-top: 8px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .why-restore button {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px dashed rgb(16 21 30 / 22%);
+    color: var(--color-steel);
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  .why-restore button:hover {
+    border-color: var(--color-signal);
+    color: var(--color-signal);
+  }
+
+  /* ═════════════════ Tabla de ítems ═════════════════ */
+  .items-section {
+    margin-bottom: 4px;
+  }
+  .items-grid {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+  }
+  .items-grid thead th {
+    background: var(--color-ink);
+    color: var(--color-paper);
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 500;
+    padding: 9px 10px;
+    text-align: left;
+  }
+  .items-grid thead th.col-num {
+    text-align: right;
+  }
+  .items-grid thead th.col-action {
+    width: 26px;
+    padding: 0;
+  }
+  .items-grid tbody td {
+    border-bottom: 1px solid rgb(16 21 30 / 14%);
+    padding: 8px 10px;
+    font-size: 12.5px;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+  .items-grid tbody td.col-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+  }
+  .price-cell {
+    display: flex;
+    align-items: baseline;
+    gap: 5px;
+  }
+  .price-tag {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-steel);
+    flex: 0 0 auto;
+  }
+  .row-total {
+    font-weight: 600;
+  }
+  .row-total-alt {
+    display: block;
+    font-size: 9.5px;
+    font-weight: 400;
+    color: var(--color-steel);
+    font-family: var(--font-mono);
+  }
+  .row-remove {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgb(16 21 30 / 14%);
+    background: transparent;
+    color: var(--color-steel);
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  .row-remove:hover {
+    border-color: var(--color-signal);
+    color: var(--color-signal);
+  }
+  .row-add {
+    margin-top: 9px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 7px;
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: transparent;
+    border: 1px dashed rgb(16 21 30 / 22%);
+    color: var(--color-steel);
+    padding: 8px 14px;
+    cursor: pointer;
+    width: 100%;
+  }
+  .row-add:hover {
+    border-color: var(--color-signal);
+    color: var(--color-signal);
+  }
+
+  /* ═════════════════ Notas y totales ═════════════════ */
+  .totals-row {
+    display: grid;
+    grid-template-columns: 1fr 300px;
+    gap: 26px;
+    margin-top: 14px;
+  }
+  .notes-block .eyebrow {
+    display: block;
+    margin-bottom: 6px;
+  }
+  .totals-box {
+    border: 1px solid rgb(16 21 30 / 22%);
+  }
+  .totals-line {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 14px;
+    border-bottom: 1px solid rgb(16 21 30 / 14%);
+  }
+  .totals-label {
+    font-family: var(--font-mono);
+    font-size: 10px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--color-steel);
+  }
+  .totals-value {
+    text-align: right;
+  }
+  .totals-main {
+    font-size: 14px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .totals-alt {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-steel);
+  }
+  .totals-line--total {
+    background: var(--color-signal);
+    border-bottom: 0;
+    padding: 13px 14px;
+  }
+  .totals-line--total .totals-label {
+    color: rgb(255 255 255 / 85%);
+  }
+  .totals-line--total .totals-main {
+    font-size: 19px;
+    color: #fff;
+  }
+  .totals-line--total .totals-alt {
+    color: rgb(255 255 255 / 80%);
+  }
+  .discount-input {
+    width: 28px;
+    border: 0;
+    border-bottom: 1px solid rgb(16 21 30 / 22%);
+    background: transparent;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    color: var(--color-ink);
+    text-align: right;
+    padding: 0 1px;
+    outline: none;
+  }
+  .discount-input:focus {
+    border-color: var(--color-signal);
+    color: var(--color-signal);
+  }
+
+  /* ═════════════════ Pie de página ═════════════════ */
+  .doc-footer {
+    background: var(--color-ink);
+    color: var(--color-steel-light);
+    padding: 16px 42px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 24px;
+    font-family: var(--font-mono);
+    font-size: 9.5px;
+    line-height: 1.7;
+    margin-top: 14px;
+  }
+  .footer-issuer span {
+    color: var(--color-paper);
+  }
+  .footer-contact {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    white-space: nowrap;
+  }
+  .footer-contact .icon {
+    color: var(--color-steel-light);
+    flex: 0 0 auto;
+  }
+  .footer-sep {
+    margin: 0 2px;
+  }
+  .footer-commercial {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+  .footer-commercial .eyebrow {
+    color: var(--color-signal-glow);
+    margin-bottom: 4px;
+  }
+  .footer-commercial > div:not(.eyebrow) {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .footer-commercial .icon {
+    color: var(--color-steel-light);
+    flex: 0 0 auto;
+  }
+  .footer-commercial .editable {
+    color: var(--color-paper);
+  }
+  .footer-slogan {
+    text-align: right;
+    max-width: 210px;
+    flex: 0 1 auto;
+  }
+  .footer-slogan-big {
+    color: var(--color-paper);
+    font-size: 12px;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+  .footer-slogan p {
+    margin: 0;
+  }
+}
+
+/* ═════════════════ Impresión ═════════════════ */
+@page {
+  size: 21.6cm 33cm; /* Oficio (Chile) */
+  margin: 0;
+}
+@media print {
+  html,
+  body {
+    background: #fff;
+  }
+  .no-print {
+    display: none !important;
+  }
+  .sheet {
+    width: 21.6cm;
+    min-height: 100vh;
+    height: auto;
+    margin: 0;
+    box-shadow: none;
+  }
+  .items-grid tr {
+    break-inside: avoid;
+  }
+  .items-grid thead {
+    display: table-header-group;
+  }
+  .why-item,
+  .totals-box,
+  .totals-line,
+  .totals-row,
+  .section-title,
+  .why-grid {
+    break-inside: avoid;
+  }
+  .doc-footer {
+    break-inside: avoid;
+  }
+  .grow-wrap.field > textarea::placeholder,
+  input.field::placeholder,
+  .editable:empty::before {
+    color: transparent !important;
+  }
+  .grow-wrap.field--notes {
+    border-color: transparent;
+  }
+  .editable:hover,
+  .editable:focus {
+    box-shadow: none !important;
+  }
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
