@@ -208,14 +208,28 @@ nuevo — `Alto-Test-Spa/Commercial-Quote-Generator` es el mismo, pero su
    se pusheó directo, con confirmación explícita del usuario antes del push
    a `main` (bloqueado una vez por el clasificador de auto-mode, reintentado
    tras pedir permiso).
-5. `../propuesta_economica` (vanilla) quedó como carpeta local histórica,
-   con su propio `origin/main` ahora apuntando al mismo commit de React —
-   **no se hizo `git pull` ahí a propósito**, para no reemplazar en
-   silencio los archivos vanilla en esa carpeta. Ver el aviso al inicio de
-   su `CLAUDE.md`.
+5. `../propuesta_economica` (vanilla) quedó como carpeta local histórica un
+   tiempo — **se borró del disco el 2026-08-20**, una vez que se repitió
+   este mismo procedimiento con `propuesta_tecnica_react` y el usuario pidió
+   dejar una sola carpeta por documento. Su historial completo sigue en
+   GitHub como el otro padre del commit de merge (`git log --all` /
+   `git show <hash>:archivo` desde acá).
+
+**Guardado automático — no dispara hasta la primera edición real** (fix del
+2026-08-20, ver `lib/store.ts`): `quote` nace de `initialTemplate()` en el
+primer render, y sin protección el guardado a los 400ms creaba una
+cotización permanente en el Worker con sólo abrir la app. Se compara contra
+una foto de `quote` del primer render (por referencia, no un flag booleano
+de una sola consumición — falla bajo React StrictMode). Particularidad acá:
+el `useEffect` de `refetchUF()` en `QuoteEditor.tsx` también cambia
+`quote.ufValue` sin que el usuario edite nada, así que la comparación
+ignora ese campo puntual al decidir si la cotización sigue "prístina".
+Mismo fix aplicado el mismo día en `informe_levantamiento` y
+`propuesta_tecnica_react`.
 
 **Pendiente**: confirmar en Vercel (Settings → Git) que la Production
 Branch quedó en `main` y no en `react-rewrite` tras el promote manual —
 si no, los próximos pushes a `main` no se despliegan solos. Migrar
 cualquier cotización que Camilo tuviera guardada solo en el `localStorage`
-del navegador viejo (no hay forma automática, vivía fuera del Worker).
+del navegador viejo (no hay forma automática, vivía fuera del Worker, y la
+carpeta que la hubiera tenido en pantalla ya no existe).
