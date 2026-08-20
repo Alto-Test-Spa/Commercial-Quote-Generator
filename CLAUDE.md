@@ -227,6 +227,18 @@ ignora ese campo puntual al decidir si la cotización sigue "prístina".
 Mismo fix aplicado el mismo día en `informe_levantamiento` y
 `propuesta_tecnica_react`.
 
+**Nombre del PDF al imprimir** (fix del 2026-08-20, ver `QuoteEditor.tsx`):
+esta app nunca tocaba `document.title` — quedaba fijo en el de `index.html`
+("ALTO TEST — Propuesta Económica"), así que "Guardar como PDF" siempre
+proponía ese nombre genérico, nunca el folio. Se agregaron listeners de
+`beforeprint`/`afterprint` (cubren el botón de la barra y Ctrl+P por igual):
+el título cambia al folio (`quote.code`) sólo durante la impresión — que es
+lo que Chrome toma como nombre de archivo — y vuelve al fijo apenas
+termina. Mismo patrón que `propuesta_tecnica_react`, que sí tocaba el
+título en pantalla y tuvo que separar ambos momentos por pedido del
+usuario (no quería el folio visible mientras trabaja, pero sí en el nombre
+del PDF).
+
 **Pendiente**: confirmar en Vercel (Settings → Git) que la Production
 Branch quedó en `main` y no en `react-rewrite` tras el promote manual —
 si no, los próximos pushes a `main` no se despliegan solos. Migrar
