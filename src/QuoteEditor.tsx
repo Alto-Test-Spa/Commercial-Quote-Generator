@@ -64,6 +64,25 @@ export default function QuoteEditor({ onAuthExpired }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [booting])
 
+  // El título de pestaña se queda siempre limpio (fijo en index.html); justo
+  // antes de imprimir (botón de la barra o Ctrl+P, `beforeprint` cubre los
+  // dos) se cambia al folio, que es lo que el navegador propone como nombre
+  // de archivo al "Guardar como PDF". `afterprint` lo devuelve a la normalidad.
+  useEffect(() => {
+    function onBeforePrint() {
+      if (quote.code) document.title = quote.code
+    }
+    function onAfterPrint() {
+      document.title = 'ALTO TEST — Propuesta Económica'
+    }
+    window.addEventListener('beforeprint', onBeforePrint)
+    window.addEventListener('afterprint', onAfterPrint)
+    return () => {
+      window.removeEventListener('beforeprint', onBeforePrint)
+      window.removeEventListener('afterprint', onAfterPrint)
+    }
+  }, [quote.code])
+
   if (booting) {
     return <div className="boot-screen">Cargando la última cotización…</div>
   }
