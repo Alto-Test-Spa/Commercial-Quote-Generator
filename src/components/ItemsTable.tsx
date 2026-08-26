@@ -13,7 +13,12 @@ interface Props {
 }
 
 function PriceCell({ row, quote, onChange }: { row: ItemRow; quote: QuoteState; onChange: (patch: Partial<QuoteState>) => void }) {
-  const [editing, setEditing] = useState(false)
+  // Mientras se edita, el value del input es el texto tal cual lo tipeó el usuario
+  // (no un re-formateo del número ya parseado) — si se re-derivara con
+  // formatFieldNumber en cada tecla, un separador decimal recién tipeado
+  // ("4," → parsea a 4) se borraría antes de poder seguir escribiendo los
+  // decimales, pegando el siguiente dígito al entero (ver CLAUDE.md).
+  const [draft, setDraft] = useState<string | null>(null)
 
   function updateRow(patch: Partial<ItemRow>) {
     onChange({ items: quote.items.map((r) => (r.id === row.id ? { ...r, ...patch } : r)) })
@@ -24,14 +29,17 @@ function PriceCell({ row, quote, onChange }: { row: ItemRow; quote: QuoteState; 
       <span className="price-tag">{quote.currency === 'UF' ? 'UF' : '$'}</span>
       <input
         className="field field--num"
-        value={editing ? formatFieldNumber(row.price) : formatPrice(row.price, quote.currency)}
+        value={draft ?? formatPrice(row.price, quote.currency)}
         placeholder="0"
         onFocus={(e) => {
-          setEditing(true)
+          setDraft(formatFieldNumber(row.price))
           e.target.select()
         }}
-        onChange={(e) => updateRow({ price: parseNumber(e.target.value) })}
-        onBlur={() => setEditing(false)}
+        onChange={(e) => {
+          setDraft(e.target.value)
+          updateRow({ price: parseNumber(e.target.value) })
+        }}
+        onBlur={() => setDraft(null)}
       />
     </span>
   )

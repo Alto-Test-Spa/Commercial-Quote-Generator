@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import FilePlus from 'reicon-react/icons/FilePlus'
 import Undo from 'reicon-react/icons/Undo'
 import Printer from 'reicon-react/icons/Printer'
@@ -40,6 +41,11 @@ export function Toolbar({
     if (ok) onNew()
   }
 
+  // Mismo motivo que PriceCell en ItemsTable.tsx: el value mientras se edita
+  // es el texto crudo tipeado, no un re-formateo de quote.ufValue en cada
+  // tecla — si no, el separador decimal se borra apenas se tipea.
+  const [ufDraft, setUfDraft] = useState<string | null>(null)
+
   return (
     <div className="toolbar no-print">
       <span className="toolbar-brand">
@@ -74,8 +80,16 @@ export function Toolbar({
         <input
           className="toolbar-input toolbar-input--uf"
           inputMode="decimal"
-          value={quote.ufValue}
-          onChange={(e) => onManualUF(e.target.value)}
+          value={ufDraft ?? quote.ufValue}
+          onFocus={(e) => {
+            setUfDraft(String(quote.ufValue))
+            e.target.select()
+          }}
+          onChange={(e) => {
+            setUfDraft(e.target.value)
+            onManualUF(e.target.value)
+          }}
+          onBlur={() => setUfDraft(null)}
         />
         <span
           className="uf-state"
