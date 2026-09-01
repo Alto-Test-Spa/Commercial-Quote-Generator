@@ -217,7 +217,7 @@ nuevo — `Alto-Test-Spa/Commercial-Quote-Generator` es el mismo, pero su
 
 **Guardado automático — no dispara hasta la primera edición real** (fix del
 2026-08-20, ver `lib/store.ts`): `quote` nace de `initialTemplate()` en el
-primer render, y sin protección el guardado a los 400ms creaba una
+primer render, y sin protección el guardado al vencer el debounce creaba una
 cotización permanente en el Worker con sólo abrir la app. Se compara contra
 una foto de `quote` del primer render (por referencia, no un flag booleano
 de una sola consumición — falla bajo React StrictMode). Particularidad acá:
@@ -226,6 +226,21 @@ el `useEffect` de `refetchUF()` en `QuoteEditor.tsx` también cambia
 ignora ese campo puntual al decidir si la cotización sigue "prístina".
 Mismo fix aplicado el mismo día en `informe_levantamiento` y
 `propuesta_tecnica_react`.
+
+**Autoguardado económico en escrituras KV** (2026-09-01, ver `lib/store.ts`,
+aplicado a las tres apps): el plan **free de Workers KV da 1000 escrituras
+`put`/día compartidas entre las tres apps** y el 2026-09-01 se agotó en una
+jornada de uso (correo de alerta de Cloudflare; las tres quedaron sin guardar
+en la nube hasta el reset de las 00:00 UTC). Tres cambios: (1) el debounce
+subió de 400 ms a `AUTOSAVE_DEBOUNCE_MS` = 3 s; (2) **guard de no-op** — antes
+de cada `PUT` se compara `JSON.stringify(quote)` contra la firma del último
+guardado con éxito (`lastSavedRef`) y si es idéntica no se llama al Worker
+(el caso previo a la primera edición lo sigue cubriendo `isPristineIgnoringUf`;
+el guard de no-op sí cuenta un cambio de UF, igual que antes); (3) listener de
+`visibilitychange → hidden` que fuerza un guardado inmediato al cambiar de
+pestaña/minimizar, para que el debounce más largo no pierda los últimos
+segundos. Del lado del Worker se dejó de reescribir el `index` en cada `PUT`
+(ver `informe_levantamiento/CLAUDE.md`, "Arquitectura de datos").
 
 **Nombre del PDF al imprimir** (fix del 2026-08-20, ver `QuoteEditor.tsx`):
 esta app nunca tocaba `document.title` — quedaba fijo en el de `index.html`

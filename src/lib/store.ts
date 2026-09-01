@@ -12,6 +12,22 @@ import type { SyncState } from './api'
 const MIRROR_KEY = 'altotest_propuesta_economica_mirror'
 const PREVIOUS_KEY = `${MIRROR_KEY}_previous`
 
+// Espera de inactividad antes de subir un cambio. Más alto = menos escrituras a
+// KV (el plan free da 1000/día compartidas entre las tres apps); un párrafo
+// escrito de corrido termina siendo un guardado en vez de varios. Costo: un
+// cierre abrupto del navegador puede perder hasta estos ms de edición — el
+// mirror local y el flush en `visibilitychange` lo mitigan.
+const AUTOSAVE_DEBOUNCE_MS = 3000
+
+// Firma del estado para el guard de no-op: si la `quote` actual serializa igual
+// que la última subida con éxito, no se llama al Worker. Sin esto, cualquier
+// cambio de `quote` que no toque el contenido gastaba una escritura KV igual.
+// (El caso del auto-fetch de UF antes de la primera edición lo cubre aparte
+// `isPristineIgnoringUf`; acá sí cuenta un cambio de UF, igual que hoy.)
+function serialize(quote: QuoteState): string {
+  return JSON.stringify(quote)
+}
+
 function withCodeAndDate(quote: QuoteState): QuoteState {
   return {
     ...quote,
@@ -65,6 +81,11 @@ export function useQuoteStore(onAuthExpired: () => void) {
   function isPristineIgnoringUf(a: QuoteState, b: QuoteState): boolean {
     return JSON.stringify({ ...a, ufValue: 0 }) === JSON.stringify({ ...b, ufValue: 0 })
   }
+  // Semilla inmutable calculada una sola vez (useState perezoso) para no
+  // re-serializar el documento entero en cada render. `lastSavedRef` se
+  // actualiza tras cada guardado con éxito y tras el fetch inicial.
+  const [initialSerialized] = useState(() => serialize(quote))
+  const lastSavedRef = useRef(initialSerialized)
   const onAuthExpiredRef = useRef(onAuthExpired)
   useEffect(() => {
     onAuthExpiredRef.current = onAuthExpired
@@ -77,6 +98,7 @@ export function useQuoteStore(onAuthExpired: () => void) {
       .then((fresh) => {
         setQuote(fresh)
         writeMirror(fresh)
+        lastSavedRef.current = serialize(fresh)
       })
       .catch((e) => {
         if (e instanceof ApiError && e.status === 401) {
@@ -96,11 +118,16 @@ export function useQuoteStore(onAuthExpired: () => void) {
     }
     const seq = ++saveSeq.current
     const t = setTimeout(async () => {
+      const snapshot = serialize(quote)
+      if (snapshot === lastSavedRef.current) return // nada nuevo que persistir
       writeMirror(quote)
       setSyncState('saving')
       try {
         await saveReport(quote)
-        if (saveSeq.current === seq) setSyncState('saved')
+        if (saveSeq.current === seq) {
+          lastSavedRef.current = snapshot
+          setSyncState('saved')
+        }
       } catch (e) {
         if (saveSeq.current !== seq) return
         if (e instanceof ApiError) {
@@ -118,8 +145,29 @@ export function useQuoteStore(onAuthExpired: () => void) {
         localStorage.removeItem(PREVIOUS_KEY)
         setCanUndo(false)
       }
-    }, 400)
+    }, AUTOSAVE_DEBOUNCE_MS)
     return () => clearTimeout(t)
+  }, [quote])
+
+  // Con el debounce más largo, cambiar de pestaña o minimizar podría dejar los
+  // últimos segundos de edición sin subir. Al pasar la página a segundo plano se
+  // fuerza un guardado inmediato si hay algo pendiente; el bump de `saveSeq`
+  // evita que este guardado y el del debounce se pisen al volver.
+  useEffect(() => {
+    const flushIfHidden = () => {
+      if (document.visibilityState !== 'hidden') return
+      const snapshot = serialize(quote)
+      if (snapshot === lastSavedRef.current) return
+      const seq = ++saveSeq.current
+      writeMirror(quote)
+      saveReport(quote)
+        .then(() => {
+          if (saveSeq.current === seq) lastSavedRef.current = snapshot
+        })
+        .catch(() => {})
+    }
+    document.addEventListener('visibilitychange', flushIfHidden)
+    return () => document.removeEventListener('visibilitychange', flushIfHidden)
   }, [quote])
 
   function reset() {
